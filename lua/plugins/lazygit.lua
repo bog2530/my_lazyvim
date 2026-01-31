@@ -38,17 +38,24 @@ return {
         keys = {
             { "<leader>lg", "<cmd>LazyGit<cr>",            desc = "LazyGit" },
             { "<leader>gf", "<cmd>LazyGitCurrentFile<cr>", desc = "LazyGit Current File" },
-        },
-    },
+          },
+      },
+
     {
-        "mgierada/lazydocker.nvim",
-        cmd = { "LazyDocker" },
-        dependencies = {
-            "akinsho/toggleterm.nvim",
-        },
-        keys = {
-            { "<leader>ld", "<cmd>LazyDocker<cr>", desc = "LazyDocker" },
-        },
-        opts = {},
-    },
+      "mgierada/lazydocker.nvim",
+      dependencies = {
+          "akinsho/toggleterm.nvim",
+      },
+      config = function()
+          require("lazydocker").setup()
+
+          vim.api.nvim_create_user_command("LazyDocker", function()
+              require("lazydocker").open()
+          end, {})
+      end,
+      keys = {
+          { "<leader>ld", "<cmd>LazyDocker<cr>", desc = "LazyDocker" },
+      },
+    }
+
 }
