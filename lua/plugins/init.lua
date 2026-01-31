@@ -16,27 +16,10 @@ return {
     -- test new blink
     { import = "nvchad.blink.lazyspec" },
 
+    -- Переопределяем настройки treesitter (не весь плагин!)
     {
-        "nvim-treesitter/nvim-treesitter",
-        opts = {
-            ensure_installed = {
-                -- Базовые
-                "vim", "lua", "vimdoc",
-                "html", "css",
-                
-                -- Python
-                "python", "rst", "toml",
-                
-                -- Go
-                "go", "gomod", "gosum", "gowork",
-                
-                -- Config/Data форматы
-                "json", "jsonc", "yaml",
-                
-                -- Документация
-                "markdown", "markdown_inline",
-            },
-        },
+      "nvim-treesitter/nvim-treesitter",
+      opts = require "configs.treesitter",
     },
 
     -- Auto-save plugin
