@@ -7,53 +7,68 @@ local map = vim.keymap.set
 map("n", ";", ":", { desc = "CMD enter command mode" })
 map("i", "jk", "<ESC>")
 
--- Универсальное двойное ESC для закрытия окон
-map("n", "<Esc><Esc>", function()
-  local current_buf = vim.api.nvim_get_current_buf()
-  local current_win = vim.api.nvim_get_current_win()
+-- Ctrl+C в терминале: отправить сигнал прерывания, затем закрыть терминал и удалить буфер
+map("t", "<C-a>", function()
+  local buf = vim.api.nvim_get_current_buf()
+  local win = vim.api.nvim_get_current_win()
 
-  -- Попробовать закрыть текущее окно если это floating, terminal или специальный буфер
-  local win_config = vim.api.nvim_win_get_config(current_win)
-  local buftype = vim.api.nvim_get_option_value("buftype", { buf = current_buf })
-  local filetype = vim.api.nvim_get_option_value("filetype", { buf = current_buf })
+  -- Отправить Ctrl+C процессу в терминале (сигнал SIGINT)
+  vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes("<C-a>", true, false, true), "n", true)
 
-  -- Если текущее окно floating - закрыть его
-  if win_config.relative ~= "" then
-    pcall(vim.api.nvim_win_close, current_win, true)
-    return
-  end
-
-  -- Если в специальном буфере (терминал, nvim-tree, и т.д.) - закрыть окно
-  if buftype ~= "" or filetype == "NvimTree" or filetype == "nvdash" then
-    -- Проверить количество окон, не закрывать последнее
-    if #vim.api.nvim_list_wins() > 1 then
-      vim.cmd "close"
+  -- Задержка для завершения процесса
+  vim.defer_fn(function()
+    -- Закрыть окно если оно еще существует
+    if vim.api.nvim_win_is_valid(win) then
+      pcall(vim.api.nvim_win_close, win, true)
     end
-    return
+
+    -- Удалить буфер терминала принудительно
+    if vim.api.nvim_buf_is_valid(buf) then
+      pcall(vim.cmd, "bdelete! " .. buf)
+    end
+  end, 150) -- Задержка 150ms
+end, { desc = "Kill terminal process and close" })
+
+-- Ctrl+X в normal mode терминала: закрыть окно терминала (спрятать)
+map("n", "<C-x>", function()
+  local buf = vim.api.nvim_get_current_buf()
+  local win = vim.api.nvim_get_current_win()
+  local filetype = vim.api.nvim_get_option_value("filetype", { buf = buf })
+
+  -- Проверяем, что мы в терминальном буфере
+  if filetype:match "^NvTerm_" then
+    pcall(vim.api.nvim_win_close, win, true)
   end
+end, { desc = "Close terminal window (hide)" })
 
-  -- Закрыть все остальные floating окна
-  for _, win in ipairs(vim.api.nvim_list_wins()) do
-    if win ~= current_win and vim.api.nvim_win_is_valid(win) then
-      local success, config = pcall(vim.api.nvim_win_get_config, win)
-      if success and config.relative ~= "" then
-        local buf = vim.api.nvim_win_get_buf(win)
-        local buf_type = vim.api.nvim_get_option_value("buftype", { buf = buf })
+-- Ctrl+A в normal mode терминала: убить процесс и закрыть
+map("n", "<C-a>", function()
+  local buf = vim.api.nvim_get_current_buf()
+  local win = vim.api.nvim_get_current_win()
+  local filetype = vim.api.nvim_get_option_value("filetype", { buf = buf })
 
-        -- Закрывать все floating окна кроме терминалов
-        if buf_type ~= "terminal" then
-          pcall(vim.api.nvim_win_close, win, true)
-        end
+  -- Проверяем, что мы в терминальном буфере
+  if filetype:match "^NvTerm_" then
+    -- Получить job_id терминала и отправить Ctrl+A
+    local job_id = vim.b[buf].terminal_job_id
+    if job_id then
+      vim.api.nvim_chan_send(job_id, "\x01") -- Ctrl+A = ASCII 0x01
+    end
+
+    -- Задержка для завершения процесса
+    vim.defer_fn(function()
+      -- Закрыть окно если оно еще существует
+      if vim.api.nvim_win_is_valid(win) then
+        pcall(vim.api.nvim_win_close, win, true)
       end
-    end
+
+      -- Удалить буфер терминала принудительно
+      if vim.api.nvim_buf_is_valid(buf) then
+        pcall(vim.cmd, "bdelete! " .. buf)
+      end
+    end, 150)
   end
-
-  -- Очистить подсветку поиска
-  vim.cmd "nohlsearch"
-end, { desc = "Close current/floating windows and clear search" })
-
--- Выход из терминала в Normal mode (без закрытия)
-map("t", "<Esc><Esc>", "<C-\\><C-n>", { desc = "Exit terminal mode" })
+end, { desc = "Kill terminal process and close (normal mode)" })
 
 -- map({ "n", "i", "v" }, "<C-s>", "<cmd> w <cr>")
 map("n", "<leader>i", function()

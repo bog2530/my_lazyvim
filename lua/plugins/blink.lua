@@ -3,6 +3,47 @@ return {
     {
         "saghen/blink.cmp",
         opts = {
+            -- Отключить автодополнения в не-кодовых контекстах
+            enabled = function()
+                local buftype = vim.api.nvim_get_option_value("buftype", { buf = 0 })
+                local filetype = vim.api.nvim_get_option_value("filetype", { buf = 0 })
+                
+                -- Отключить в Telescope и других prompt окнах
+                if buftype == "prompt" then
+                    return false
+                end
+                
+                -- Отключить в специальных типах буферов
+                if buftype == "nofile" or buftype == "terminal" then
+                    return false
+                end
+                
+                -- Отключить в non-code файлах
+                local non_code_filetypes = {
+                    "markdown",
+                    "text",
+                    "txt",
+                    "help",
+                    "man",
+                    "gitcommit",
+                    "gitrebase",
+                    "TelescopePrompt",
+                    "TelescopeResults",
+                    "NvimTree",
+                    "neo-tree",
+                    "Trouble",
+                    "lazy",
+                    "mason",
+                }
+                
+                for _, ft in ipairs(non_code_filetypes) do
+                    if filetype == ft then
+                        return false
+                    end
+                end
+                
+                return true
+            end,
             sources = {
                 default = { "lsp", "path", "snippets", "buffer", "copilot" },
                 providers = {
